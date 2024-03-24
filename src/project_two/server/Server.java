@@ -1,8 +1,6 @@
 package project_two.server;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 
@@ -16,6 +14,20 @@ public class Server {
         ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
         ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
 
+        File file = new File(filepath);
+        FileInputStream fileInputStream = new FileInputStream(file);
+        byte[] fileData = new byte[(int) file.length()];
+        fileInputStream.read(fileData);
+
+        int startPos = 0;
+        int nextSeq = 0;
+
+        while (startPos < fileData.length){
+            //Cha Cha Slide here
+            while(nextSeq < startPos + windowSize && nextSeq < fileData.length){
+                Packet packet = new Packet(nextSeq, fileData[nextSeq])
+            }
+        }
 
 
 
