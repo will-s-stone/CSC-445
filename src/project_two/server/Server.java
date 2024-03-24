@@ -1,5 +1,7 @@
 package project_two.server;
 
+import project_two.additional.Packet;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +27,7 @@ public class Server {
         while (startPos < fileData.length){
             //Cha Cha Slide here
             while(nextSeq < startPos + windowSize && nextSeq < fileData.length){
-                Packet packet = new Packet(nextSeq, fileData[nextSeq])
+                Packet packet = new Packet(nextSeq, fileData[nextSeq]);
             }
         }
 

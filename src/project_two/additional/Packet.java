@@ -1,5 +1,19 @@
 package project_two.additional;
 
-public class Packet {
+import java.io.Serializable;
 
+public class Packet implements Serializable {
+    private static final long serialVersionID = 1L;
+    private int seqNum;
+    private byte[] data;
+    public Packet(int nextSeq, byte[] data){
+        this.seqNum = seqNum;
+        this.data = data;
+    }
+    public int getSeqNum(){
+        return seqNum;
+    }
+    public byte[] getData() {
+        return data;
+    }
 }
