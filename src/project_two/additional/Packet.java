@@ -1,8 +1,9 @@
 package project_two.additional;
 
 import java.io.Serializable;
+import java.net.DatagramPacket;
 
-public class Packet implements Serializable {
+public class Packet {
     private static final long serialVersionID = 1L;
     private int seqNum;
     private byte[] data;
