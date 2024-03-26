@@ -12,12 +12,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.TimeUnit;
 
-public class Server extends TFTP {
+public class Server {
     int port;
     public static void main(String[] args) throws InterruptedException, IOException {
         Server server = new Server(1234);
         server.receiveFile("I'll add this later", 69);
-
 
     }
 
@@ -29,7 +28,7 @@ public class Server extends TFTP {
         channel.bind(new InetSocketAddress(port));
 
         while (true) {
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            ByteBuffer buffer = ByteBuffer.allocate(512);
             SocketAddress clientAddress = channel.receive(buffer);
             buffer.flip();
             byte[] data = new byte[buffer.remaining()];
