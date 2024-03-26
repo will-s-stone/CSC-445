@@ -1,5 +1,7 @@
 package project_two.client;
 
+import project_two.additional.TFTP;
+
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -7,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.TimeUnit;
 
-public class Client {
+public class Client extends TFTP {
     String host;
     int port;
     public static void main(String[] args) throws InterruptedException, IOException {

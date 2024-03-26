@@ -1,6 +1,7 @@
 package project_two.server;
 
 import project_two.additional.Packet;
+import project_two.additional.TFTP;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -11,7 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.TimeUnit;
 
-public class Server {
+public class Server extends TFTP {
     int port;
     public static void main(String[] args) throws InterruptedException, IOException {
         Server server = new Server(1234);
