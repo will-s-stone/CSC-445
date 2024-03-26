@@ -3,8 +3,12 @@ package project_two.server;
 import project_two.additional.Packet;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.util.concurrent.TimeUnit;
 
 public class Server {
@@ -20,35 +24,17 @@ public class Server {
         this.port = port;
     }
     public void receiveFile(String filepath, int windowSize) throws IOException {
-        try (ServerSocket serverSocket = new ServerSocket(port);
-             Socket socket = serverSocket.accept();
-             DataInputStream dataInputStream = new DataInputStream(socket.getInputStream())) {
+        DatagramChannel channel = DatagramChannel.open();
+        channel.bind(new InetSocketAddress(port));
 
-            // Receive file name and length from the client
-            String fileName = dataInputStream.readUTF();
-            long fileLength = dataInputStream.readLong();
-
-            // Create a new file on the server
-            File file = new File("received_" + fileName);
-            try (FileOutputStream fileOutputStream = new FileOutputStream(file);
-                 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
-
-                // Receive file contents from the client and write to the file
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while (fileLength > 0 && (bytesRead = dataInputStream.read(buffer, 0, (int) Math.min(buffer.length, fileLength))) != -1) {
-                    bufferedOutputStream.write(buffer, 0, bytesRead);
-                    fileLength -= bytesRead;
-                }
-                bufferedOutputStream.flush();
-                System.out.println("File received successfully.");
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        while (true) {
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            SocketAddress clientAddress = channel.receive(buffer);
+            buffer.flip();
+            byte[] data = new byte[buffer.remaining()];
+            buffer.get(data);
+            String message = new String(data);
+            System.out.println("Received message from " + clientAddress + ": " + message);
         }
     }
 
