@@ -10,6 +10,7 @@ public class TFTP {
     public static final byte[] ERROR = {0,5};
     public static byte[] OCTET = null;
     public static final int BLOCK_SIZE = 512;
+    public static final int BLOCK_NUM_SIZE = 2;
     public static final byte ZERO_BYTE = 0;
     public static final byte ONE_BYTE = 1;
 }
