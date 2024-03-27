@@ -28,20 +28,26 @@ public class Client extends TFTP {
         channel.connect(new InetSocketAddress(host, port));
 
         File file = new File(filePath);
+        int blockNum = 0;
         try (FileInputStream fis = new FileInputStream(file)) {
-            byte[] buffer = new byte[1024];
+            //Make this a variable that is sent at first when a window size is requested.
+            // + 4 for block number, should be 2 bytes for tftp, will change later.
+            byte[] buffer = new byte[2 + 512];
             int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead);
+            while ((bytesRead = fis.read(buffer, 2, 512)) != -1) {
+                blockNum++;
+                buffer[0] = (byte) ((blockNum >> 8) & 0xFF);
+                buffer[1] = (byte) (blockNum & 0xFF);
+
+                ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead + 2);
                 channel.write(packet);
-                Thread.sleep(50); // Simulate network delay
+                System.out.println("Packet sent");
             }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
 
         System.out.println("File sent successfully.");
     }
+
 
 
 }
