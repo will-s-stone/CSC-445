@@ -15,6 +15,7 @@ public class Client extends TFTP {
     String host;
     int port;
     TreeMap<Integer, byte[]> data = new TreeMap<>();
+
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 1234);
         client.sendFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 1024);
@@ -40,6 +41,8 @@ public class Client extends TFTP {
         System.out.println("File sent successfully.");
     }
 
+    //public void recieveAcks()
+
     public void loadFile(String filePath){
         File file = new File(filePath);
         int blockNum = 0;
@@ -62,6 +65,8 @@ public class Client extends TFTP {
             throw new RuntimeException(e);
         }
     }
+
+
 
 
 

@@ -33,11 +33,12 @@ public class Server extends TFTP {
 
         while (true) {
             //Make this a variable that is sent at first when a window size is requested.
-            ByteBuffer buffer = ByteBuffer.allocate(512 + 2);
+            ByteBuffer buffer = ByteBuffer.allocate(BLOCK_SIZE + BLOCK_NUM_SIZE);
             SocketAddress clientAddress = channel.receive(buffer);
             buffer.flip();
             int blockNum = ((buffer.get() & 0xff) << 8) | (buffer.get() & 0xff);
-            boolean isLastPacket = buffer.remaining() < (512 + 2);
+
+            boolean isLastPacket = buffer.remaining() < (BLOCK_SIZE + BLOCK_NUM_SIZE);
 
             byte[] data = new byte[buffer.remaining()];
             buffer.get(data);
