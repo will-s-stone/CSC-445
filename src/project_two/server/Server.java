@@ -17,9 +17,7 @@ public class Server extends TFTP {
     int port;
     public static void main(String[] args) throws InterruptedException, IOException {
         Server server = new Server(1234);
-        server.receiveFile("testing_file_123.txt", 69);
-
-
+        server.receiveFile("testing_file_123.txt", 8);
     }
 
     public Server(int port) {
@@ -29,14 +27,14 @@ public class Server extends TFTP {
         DatagramChannel channel = DatagramChannel.open();
         channel.bind(new InetSocketAddress(port));
 
-        TreeMap<Integer, byte[]> packetBuffer = new TreeMap<>();
+        TreeMap<Short, byte[]> packetBuffer = new TreeMap<>();
 
         while (true) {
             //Make this a variable that is sent at first when a window size is requested.
             ByteBuffer buffer = ByteBuffer.allocate(BLOCK_SIZE + BLOCK_NUM_SIZE);
             SocketAddress clientAddress = channel.receive(buffer);
             buffer.flip();
-            int blockNum = ((buffer.get() & 0xff) << 8) | (buffer.get() & 0xff);
+            short blockNum = (short) (((buffer.get() & 0xff) << 8) | (buffer.get() & 0xff));
 
             boolean isLastPacket = buffer.remaining() < (BLOCK_SIZE + BLOCK_NUM_SIZE);
 
@@ -58,8 +56,6 @@ public class Server extends TFTP {
 
             //buffer.get(data);
             //Get the block number and then store it in order
-
-
 
             String message = new String(data);
             System.out.println("Received message from " + clientAddress + ": " + message);

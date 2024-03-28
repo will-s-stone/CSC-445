@@ -8,18 +8,21 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 public class Client extends TFTP {
     String host;
     int port;
-    TreeMap<Integer, byte[]> data = new TreeMap<>();
+    TreeMap<Short, byte[]> data = new TreeMap<>();
+
 
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 1234);
-        client.sendFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 1024);
+        client.sendFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 8);
         //client.loadFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
         System.out.println();
     }
@@ -29,14 +32,23 @@ public class Client extends TFTP {
     }
 
     public void sendFile(String filePath, int windowSize) throws IOException {
+        int blockNumLastAckReceived = 0; //seqNum in book
+        int blockNumLastFrameSent = 0;
+        List<Integer> ackedBlocks = new ArrayList<>();
+
         DatagramChannel channel = DatagramChannel.open();
         channel.configureBlocking(true);
         channel.connect(new InetSocketAddress(host, port));
         loadFile(filePath);
+        int i = 0;
         for(byte[] packetData : data.values()){
-            ByteBuffer packet = ByteBuffer.wrap(packetData);
-            channel.write(packet);
-            System.out.println("Packet sent");
+            // if(i < data.values().size()) won't be needed if I keep track of SWS, LAR, and LFS
+            if(i < data.values().size()) {
+                ByteBuffer packet = ByteBuffer.wrap(packetData);
+                channel.write(packet);
+                System.out.println("Packet sent");
+            }
+            i++;
         }
 
         System.out.println("File sent successfully.");
@@ -46,7 +58,7 @@ public class Client extends TFTP {
 
     public void loadFile(String filePath){
         File file = new File(filePath);
-        int blockNum = 0;
+        short blockNum = 0;
 
         try (FileInputStream fis = new FileInputStream(file)) {
             //Make this a variable that is sent at first when a window size is requested.
@@ -56,8 +68,8 @@ public class Client extends TFTP {
 
             while ((bytesRead = fis.read(buffer, BLOCK_NUM_SIZE, BLOCK_SIZE)) != -1) {
                 blockNum++;
-                buffer[0] = (byte) ((blockNum >> 8) & 0xFF);
-                buffer[1] = (byte) (blockNum & 0xFF);
+                //buffer[0] = (byte) ((blockNum >> 8) & 0xFF);
+                //buffer[1] = (byte) (blockNum & 0xFF);
 
 
                 byte[] dataBlock = Arrays.copyOf(buffer, bytesRead + BLOCK_NUM_SIZE);
