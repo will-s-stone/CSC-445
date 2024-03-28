@@ -35,7 +35,7 @@ public class Server extends TFTP {
             SocketAddress clientAddress = channel.receive(buffer);
             buffer.flip();
             short blockNum = (short) (((buffer.get() & 0xff) << 8) | (buffer.get() & 0xff));
-
+            System.out.println("Block: " + blockNum);
             boolean isLastPacket = buffer.remaining() < (BLOCK_SIZE + BLOCK_NUM_SIZE);
 
             byte[] data = new byte[buffer.remaining()];
@@ -44,9 +44,18 @@ public class Server extends TFTP {
 
             File file = new File(filepath);
             try(FileOutputStream fos = new FileOutputStream(file, true)) {
+                // This loop seems problematic
                 while (packetBuffer.containsKey(blockNum)) {
                     byte[] packetData = packetBuffer.remove(blockNum);
                     fos.write(packetData);
+
+                    // Send the ack back, in this case it's just the block number/sequence number of the last frame received
+                    ByteBuffer ack = ByteBuffer.allocate(2);
+                    ack.putShort(blockNum);
+                    ack.flip();
+                    channel.send(ack, clientAddress);
+                    System.out.println("\n\n Ack sent => " + blockNum);
+
                     if (isLastPacket) {
                         fos.close();
                     }

@@ -8,16 +8,20 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.TreeMap;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class Client extends TFTP {
     String host;
     int port;
     TreeMap<Short, byte[]> data = new TreeMap<>();
+
+    //Could have the DatagramChannel as an instance var up here.
+    // DatagramChannel channel;
+    // Selector selector;
+
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -34,24 +38,52 @@ public class Client extends TFTP {
     public void sendFile(String filePath, int windowSize) throws IOException {
         int blockNumLastAckReceived = 0; //seqNum in book
         int blockNumLastFrameSent = 0;
-        List<Integer> ackedBlocks = new ArrayList<>();
+        List<Short> ackedBlocks = new ArrayList<>();
 
+        // Selector resource: https://www.baeldung.com/java-nio-selector
         DatagramChannel channel = DatagramChannel.open();
-        channel.configureBlocking(true);
+        //channel.configureBlocking(true);
+        channel.configureBlocking(false);
         channel.connect(new InetSocketAddress(host, port));
+        Selector selector = Selector.open();
+        channel.register(selector, SelectionKey.OP_READ);
+
         loadFile(filePath);
         int i = 0;
-        for(byte[] packetData : data.values()){
+
+//        Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+//        while (iterator.hasNext()) {
+//            SelectionKey key = iterator.next();
+//            iterator.remove();
+//            if (key.isReadable()) {
+//
+//                ByteBuffer buffer = ByteBuffer.allocate(2);
+//                channel.receive(buffer);
+//                buffer.flip();
+//
+//                short blockNum = buffer.getShort();
+//                ackedBlocks.add(blockNum);
+//
+//                //ackedBlocks.get(buffer.getShort());
+//                System.out.println("Received Ack " + buffer.getShort());
+//            }
+//            key.cancel();
+//        }
+
+        for (byte[] packetData : data.values()) {
             // if(i < data.values().size()) won't be needed if I keep track of SWS, LAR, and LFS
-            if(i < data.values().size()) {
+            // Put Iterator block here?
+
+            if (i < data.values().size()) {
                 ByteBuffer packet = ByteBuffer.wrap(packetData);
                 channel.write(packet);
                 System.out.println("Packet sent");
+
             }
             i++;
         }
-
-        System.out.println("File sent successfully.");
+        //}
+        //System.out.println("File sent successfully.");
     }
 
     //public void recieveAcks()
@@ -70,9 +102,15 @@ public class Client extends TFTP {
                 blockNum++;
                 //buffer[0] = (byte) ((blockNum >> 8) & 0xFF);
                 //buffer[1] = (byte) (blockNum & 0xFF);
+                ByteBuffer blockNumBuffer = ByteBuffer.allocate(BLOCK_NUM_SIZE);
+                blockNumBuffer.putShort(blockNum);
+                byte[] bytes = blockNumBuffer.array();
 
 
                 byte[] dataBlock = Arrays.copyOf(buffer, bytesRead + BLOCK_NUM_SIZE);
+                // Copies the blockNum over to the dataBlock[]
+                dataBlock[0] = bytes[0];
+                dataBlock[1] = bytes[1];
                 data.put(blockNum, dataBlock);
                 //ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead + BLOCK_NUM_SIZE);
                 //data.put(blockNum, packet.array().clone());
