@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.Arrays;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
@@ -58,8 +59,11 @@ public class Client extends TFTP {
                 buffer[0] = (byte) ((blockNum >> 8) & 0xFF);
                 buffer[1] = (byte) (blockNum & 0xFF);
 
-                ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead + BLOCK_NUM_SIZE);
-                data.put(blockNum, packet.array().clone());
+
+                byte[] dataBlock = Arrays.copyOf(buffer, bytesRead + BLOCK_NUM_SIZE);
+                data.put(blockNum, dataBlock);
+                //ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead + BLOCK_NUM_SIZE);
+                //data.put(blockNum, packet.array().clone());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
