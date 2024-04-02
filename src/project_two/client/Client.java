@@ -18,7 +18,7 @@ public class Client extends TFTP {
 
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 1234);
-        client.sendFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 1024);
+        client.sendFile("src/project_two/additional/practice_file.txt", 1024);
         //client.loadFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
         System.out.println();
     }
@@ -59,6 +59,7 @@ public class Client extends TFTP {
                 buffer[1] = (byte) (blockNum & 0xFF);
 
                 ByteBuffer packet = ByteBuffer.wrap(buffer, 0, bytesRead + BLOCK_NUM_SIZE);
+                System.out.println(packet);
                 data.put(blockNum, packet.array().clone());
             }
         } catch (IOException e) {
