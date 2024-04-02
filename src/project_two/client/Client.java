@@ -39,14 +39,15 @@ public class Client extends TFTP {
         int blockNumLastAckReceived = 0; //seqNum in book
         int blockNumLastFrameSent = 0;
         List<Short> ackedBlocks = new ArrayList<>();
-
+        Selector selector = Selector.open();
         // Selector resource: https://www.baeldung.com/java-nio-selector
         DatagramChannel channel = DatagramChannel.open();
         //channel.configureBlocking(true);
-        channel.configureBlocking(false);
         channel.connect(new InetSocketAddress(host, port));
-        Selector selector = Selector.open();
+        channel.configureBlocking(false);
+
         channel.register(selector, SelectionKey.OP_READ);
+
 
         loadFile(filePath);
         int i = 0;
@@ -74,13 +75,41 @@ public class Client extends TFTP {
             // if(i < data.values().size()) won't be needed if I keep track of SWS, LAR, and LFS
             // Put Iterator block here?
 
+            //  \/ Pointless for now but will come in handy with the window size
             if (i < data.values().size()) {
                 ByteBuffer packet = ByteBuffer.wrap(packetData);
                 channel.write(packet);
                 System.out.println("Packet sent");
-
             }
-            i++;
+
+
+            //while(true){
+                selector.selectNow(); // Non-blocking select?
+                Set<SelectionKey> keys = selector.selectedKeys();
+                Iterator<SelectionKey> keyIterator = keys.iterator();
+
+                while(keyIterator.hasNext()){
+                    SelectionKey key = keyIterator.next();
+                    if (key.isReadable()){
+                        System.out.println("STUFF IS HERE!!!");
+                        //keyIterator.remove();
+                    }
+                    keyIterator.remove();
+                }
+            //}
+//            ByteBuffer ackBuffer = ByteBuffer.allocate(2);
+//            channel.read(ackBuffer);
+//
+//            if (ackBuffer.position() > 0){
+//                // Flip from writing to reading :)
+//                ackBuffer.flip();
+//                short ack = ackBuffer.getShort();
+//                System.out.println("Received Ack on Client: " + ack);
+//            } else {
+//                System.out.println("Nada this go-round");
+//            }
+//            ackBuffer.clear();
+            //i++;
         }
         //}
         //System.out.println("File sent successfully.");

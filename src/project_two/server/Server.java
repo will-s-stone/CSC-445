@@ -53,18 +53,16 @@ public class Server extends TFTP {
                     ByteBuffer ack = ByteBuffer.allocate(2);
                     ack.putShort(blockNum);
                     ack.flip();
+
+                    ack.position(0);
                     channel.send(ack, clientAddress);
                     System.out.println("\n\n Ack sent => " + blockNum);
 
-                    if (isLastPacket) {
-                        fos.close();
-                    }
+                    //if (isLastPacket) {fos.close();}
                     blockNum++;
                 }
+                if (isLastPacket) {fos.close();}
             }
-
-            //buffer.get(data);
-            //Get the block number and then store it in order
 
             String message = new String(data);
             System.out.println("Received message from " + clientAddress + ": " + message);
