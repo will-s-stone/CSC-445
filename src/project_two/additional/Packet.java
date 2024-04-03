@@ -14,10 +14,16 @@ public class Packet {
     private PACKET_TYPE packetType;
     public Packet(byte[] rawFrame){
         //Do some stuff in here to get all the data from the raw frame. Eg. op codes, etc.
+        //No need to account for modes as we are only supporting octet transmission.
         this.rawFrame = rawFrame;
 
         if(rawFrame[0] == 0 && rawFrame[1] == 1){
             packetType = PACKET_TYPE.READ;
+            //256
+            for (int i = 2; i < 258; ++) {
+
+            }
+
         } else if (rawFrame[0] == 0 && rawFrame[1] == 2){
             packetType = PACKET_TYPE.WRITE;
         }else if (rawFrame[0] == 0 && rawFrame[1] == 3){
