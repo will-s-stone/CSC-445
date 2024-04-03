@@ -10,19 +10,26 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 public class Server extends TFTP {
     int port;
+
     public static void main(String[] args) throws InterruptedException, IOException {
         Server server = new Server(1234);
-        server.receiveFile("testing_file_123.txt", 8);
+        server.receiveFileAndSendAck("testing_file_123.txt", 8);
     }
 
     public Server(int port) {
         this.port = port;
     }
+
     public void receiveFile(String filepath, int windowSize) throws IOException {
         DatagramChannel channel = DatagramChannel.open();
         channel.bind(new InetSocketAddress(port));
@@ -43,7 +50,7 @@ public class Server extends TFTP {
             packetBuffer.put(blockNum, data);
 
             File file = new File(filepath);
-            try(FileOutputStream fos = new FileOutputStream(file, true)) {
+            try (FileOutputStream fos = new FileOutputStream(file, true)) {
                 // This loop seems problematic
                 while (packetBuffer.containsKey(blockNum)) {
                     byte[] packetData = packetBuffer.remove(blockNum);
@@ -61,7 +68,9 @@ public class Server extends TFTP {
                     //if (isLastPacket) {fos.close();}
                     blockNum++;
                 }
-                if (isLastPacket) {fos.close();}
+                if (isLastPacket) {
+                    fos.close();
+                }
             }
 
             String message = new String(data);
@@ -69,4 +78,48 @@ public class Server extends TFTP {
         }
     }
 
+    public void receiveFileAndSendAck(String filepath, int windowSize) throws IOException {
+        try {
+            Selector selector = Selector.open();
+            DatagramChannel channel = DatagramChannel.open();
+            channel.configureBlocking(false);
+            channel.bind(new InetSocketAddress(port));
+            channel.register(selector, SelectionKey.OP_ACCEPT | SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+
+            while (true) {
+                selector.select();
+
+                Set<SelectionKey> selectedKeys = selector.selectedKeys();
+                Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+
+                while (keyIterator.hasNext()) {
+                    SelectionKey key = keyIterator.next();
+                    keyIterator.remove();
+
+                    if (!key.isValid()) {
+                        continue;
+                    }
+                    if (key.isAcceptable()) {
+                        System.out.println("This may or may not be connection from a client: " + channel.getRemoteAddress());
+                    }
+                    if (key.isReadable()) {
+                        DatagramChannel clientChannel = (DatagramChannel) key.channel();
+                        buffer.clear();
+                        InetSocketAddress clientAddress = (InetSocketAddress) clientChannel.receive(buffer);
+                        buffer.flip();
+
+                        byte[] packet = buffer.array();
+                        System.out.println(packet.toString());
+
+                        buffer.flip();
+                        clientChannel.send(buffer, clientAddress);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
