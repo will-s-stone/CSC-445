@@ -22,13 +22,10 @@ public class Client extends TFTP {
     // DatagramChannel channel;
     // Selector selector;
 
-
-
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 1234);
-        client.sendFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 8);
+        client.sendAndReceiveAck("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 8);
         //client.loadFile("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
-        System.out.println();
     }
     public Client(String host, int port){
         this.host = host;
@@ -116,6 +113,64 @@ public class Client extends TFTP {
     }
 
     //public void recieveAcks()
+
+    public void sendAndReceiveAck(String filePath, int windowSize) throws IOException {
+        loadFile(filePath);
+        int bufferSize = 1024;
+        Selector selector = Selector.open();
+        DatagramChannel channel = DatagramChannel.open();
+        channel.configureBlocking(false);
+        channel.connect(new InetSocketAddress(host, port));
+        channel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ, SelectionKey.OP_WRITE);
+
+        ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+
+        while(true) {
+            selector.select();
+
+            Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+
+            while(keyIterator.hasNext()){
+                SelectionKey key = keyIterator.next();
+                keyIterator.remove();
+
+                if (!key.isValid()){
+                    continue;
+                }
+                if (key.isConnectable()){
+                    System.out.println("Connected to server.");
+                }
+                // Read what is coming back to us
+                if (key.isReadable()){
+                    buffer.clear();
+                    short bytesRead = (short) channel.read(buffer);
+                    if (bytesRead == -1){
+                        channel.close();
+                        break;
+                    }
+                    buffer.flip();
+                    System.out.println("Received: " + new String(buffer.array(), 0, bytesRead));
+                }
+
+                if(key.isWritable()){
+                    //Make dynamic with data
+                    for (short i = 0; i < windowSize; i++) {
+                        byte[] packetData = data.get(i);
+                        buffer.clear();
+                        buffer.put(packetData);
+                        buffer.flip();
+                        channel.write(buffer);
+                        System.out.println("Packet number sent => " + i);
+                    }
+
+                }
+            }
+        }
+    }
+
+
+
 
     public void loadFile(String filePath){
         File file = new File(filePath);
