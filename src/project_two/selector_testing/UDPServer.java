@@ -45,9 +45,15 @@ public class UDPServer {
 
                         // Echo the message back to the client
                         buffer.flip();
+                        //buffer.clear();
+
+                        //ByteBuffer ackBuffer = ByteBuffer.allocate(2);
                         buffer.clear();
 
-                        buffer.putInt(69);
+                        //ackBuffer.putShort((short) 69);
+                        buffer.putShort((short) 69);
+                        //It's important to clear to reset the position of the buffer becuase this info is sent as the byte buffer.
+                        buffer.clear();
                         clientChannel.send(buffer, clientAddress);
                     }
                 }

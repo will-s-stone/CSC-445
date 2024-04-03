@@ -47,7 +47,7 @@ public class UDPClient {
                         serverChannel.receive(buffer);
                         buffer.flip();
                         //String response = new String(buffer.array(), 0, buffer.limit());
-                        int response = buffer.getInt();
+                        short response = buffer.getShort();
                         System.out.println("Received message from server: " + response);
                     }
                 }
