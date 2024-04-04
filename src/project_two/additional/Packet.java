@@ -17,6 +17,20 @@ public class Packet {
     private PACKET_TYPE packetType;
 
     //The idea here is everytime a packet is sent or received, I build a packet object with the raw data then interact with the class methods for setting and getting.
+    public Packet(byte[] data, short blockNum){
+        this.blockNum = blockNum;
+        this.rawFrame = new byte[516];
+        this.packetType = PACKET_TYPE.DATA;
+        this.rawFrame[0] = 0;
+        this.rawFrame[1] = 3;
+        // Copy block number over
+        this.rawFrame[2] = (byte)(blockNum & 0xff);
+        this.rawFrame[3] = (byte)((blockNum >> 8) & 0xff);
+        //System.out.println("Hey it's packet class here!!! " + blockNum);
+        // Test this
+        System.arraycopy(data, 0, this.rawFrame, 4, data.length);
+
+    }
     public Packet(byte[] rawFrame){
         //Do some stuff in here to get all the data from the raw frame. Eg. op codes, etc.
         //No need to account for modes as we are only supporting octet transmission.
