@@ -62,7 +62,9 @@ public class Client extends TFTP {
         buffer.clear();
         //buffer.put(packets.get(blockNum).getRawFrame());
         buffer = ByteBuffer.wrap(packets.get(blockNum).getRawFrame());
+
         buffer.clear();
+
         CHANNEL.send(buffer, ADDRESS);
         System.out.println("Frame #" + blockNum + " ...");
     }
