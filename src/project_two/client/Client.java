@@ -32,7 +32,7 @@ public class Client extends TFTP {
         ADDRESS = new InetSocketAddress(HOST, PORT);
     }
 
-    public void start(String filePath, int windowSize) throws IOException {
+    public void start(String filePath, int windowSize) throws IOException, InterruptedException {
         //load the file and write the data map
         loadFile(filePath);
         while(true){
@@ -40,6 +40,7 @@ public class Client extends TFTP {
 
             for (short i = 0; i < packets.size(); i++) {
                 sendFrame(i, buffer);
+                Thread.sleep(0, 10);
                 receiveMessage();
             }
             break;
@@ -68,7 +69,7 @@ public class Client extends TFTP {
 
 
 
-    private void loadFile(String filePath){
+    private void loadFile(String filePath) {
         File file = new File(filePath);
         short blockNum = 0;
 
@@ -76,7 +77,7 @@ public class Client extends TFTP {
             byte[] buffer = new byte[512];
             int bytesRead;
 
-            while ((bytesRead = fis.read(buffer)) != -1) {
+            while ((bytesRead = fis.read(buffer)) != -1 ) {
                 byte[] chunk = new byte[bytesRead];
                 System.arraycopy(buffer, 0, chunk, 0, bytesRead);
                 Packet packet = new Packet(chunk, blockNum);

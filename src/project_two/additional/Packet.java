@@ -16,6 +16,7 @@ public class Packet {
     public enum PACKET_TYPE {READ, WRITE, DATA, ACK, ERROR}
     private String filename;
     private PACKET_TYPE packetType;
+    boolean lastDataPacket = false;
 
     //The idea here is everytime a packet is sent or received, I build a packet object with the raw data then interact with the class methods for setting and getting.
     public Packet(byte[] data, short blockNum){
@@ -48,9 +49,12 @@ public class Packet {
             this.packetType = PACKET_TYPE.DATA;
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
             this.blockNumByteArr = blockNumArr;
-            ByteBuffer buffer = ByteBuffer.wrap(blockNumArr);
-            this.blockNum = buffer.getShort();
-            this.data = Arrays.copyOfRange(rawFrame, 4, 516);
+            this.blockNum = (short) ((blockNumArr[1] << 8) | (blockNumArr[0] & 0xff));
+
+            this.data = Arrays.copyOfRange(rawFrame, 4, rawFrame.length);
+            if(this.data[511] == 0 && this.data[510] == 0){
+                lastDataPacket = true;
+            }
         }else if (rawFrame[0] == 0 && rawFrame[1] == 4){
             packetType = PACKET_TYPE.ACK;
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
@@ -91,6 +95,9 @@ public class Packet {
     public byte[] getBlockNumByteArr(){return blockNumByteArr;}
     public String getFilename(){
         return filename;
+    }
+    public boolean isLastDataPacket(){
+        return lastDataPacket;
     }
 
 

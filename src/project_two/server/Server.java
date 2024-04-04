@@ -43,6 +43,7 @@ public class Server extends TFTP {
             if(clientAddress != null){
                 buffer.flip();
                 Packet packet = new Packet(buffer.array());
+                packets.put(packet.getBlockNum(), packet);
 
                 System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
 
@@ -52,19 +53,36 @@ public class Server extends TFTP {
 
                 ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
                 CHANNEL.send(ackBuffer, clientAddress);
+
+                if(packet.isLastDataPacket()){
+                    System.out.println("Done here");
+                    saveFile();
+                    break;
+                }
             }
         }
     }
 
 
     public void saveFile(){
+        byte[] bytes = new byte[getTotalBytesInPackets()];
+        for (short i = 0; i < packets.size(); i++) {
+            System.arraycopy(packets.get(i).getData(), 0, bytes, 512*i, packets.get(i).getData().length);
+            packets.get(i);
+        }
         try (FileOutputStream fos = new FileOutputStream("src/project_two/output/test_file.txt")) {
-            for (short i = 0; i < packets.size(); i++) {
-                fos.write(packets.get(i).getData());
-            }
+            fos.write(bytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public int getTotalBytesInPackets(){
+        int sum = 0;
+        for (short i = 0; i < packets.size(); i++) {
+            sum += packets.get(i).getData().length;
+        }
+        return sum;
     }
 
 }
