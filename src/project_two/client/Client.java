@@ -13,6 +13,7 @@ public class Client extends TFTP {
     private String HOST;
     private int PORT;
     TreeMap<Short, Packet> packets = new TreeMap<>();
+    HashSet<Short> ackedPackets = new HashSet<>();
     DatagramChannel CHANNEL;
     InetSocketAddress ADDRESS;
 
@@ -35,29 +36,45 @@ public class Client extends TFTP {
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
 
-            for (short i = 0; i < packets.size(); i++) {
+            short i = 0;
+            while (packets.size() != ackedPackets.size()){
                 sendFrame(i, buffer);
-                Thread.sleep(0, 10);
-                receiveMessage();
+                receiveAck();
+                i++;
             }
+
+//            for (short i = 0; i < packets.size(); i++) {
+//                sendFrame(i, buffer);
+//                Thread.sleep(0, 10);
+//                receiveAck();
+//            }
             break;
         }
 
     }
 
-    public void receiveMessage() throws IOException {
+    public void receiveAck() throws IOException {
         ByteBuffer ackBuffer = ByteBuffer.allocate(2);
         InetSocketAddress serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer);
         if (serverAddress != null) {
             ackBuffer.flip();
-            short ack = ackBuffer.getShort();
-            System.out.println("Received ack from: " + ack);
+            byte[] ackArr = ackBuffer.array();
+            short ack = (short) ((ackArr[1] << 8) | (ackArr[0] & 0xff));
+            //Update ack status
+            packets.get(ack).ackPacket();
+            ackedPackets.add(ack);
+
+            System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
         } else {System.out.println("Nothing quite yet"); }
     }
 
     public void sendFrame(short blockNum, ByteBuffer buffer) throws IOException {
+        //If we have sent all the packets, return.
+        if(blockNum >= packets.size()){
+            return;
+        }
         buffer.clear();
-        //buffer.put(packets.get(blockNum).getRawFrame());
+
         buffer = ByteBuffer.wrap(packets.get(blockNum).getRawFrame());
 
         buffer.clear();
