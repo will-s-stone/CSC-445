@@ -45,6 +45,7 @@ public class UDPClient {
                 buffer.flip();
                 channel.send(buffer, new InetSocketAddress(SERVER_HOST, SERVER_PORT));
                 System.out.println("Packet # " + i + " sent...");
+
                 if(i == packets.size()-1){
                     i = 0;
                 }
@@ -69,6 +70,9 @@ public class UDPClient {
                         System.out.println("Received message from server: " + response);
                         //ackReceived = true;
                     }
+                    //if (key.isWritable()){
+                        //break;
+                    //}
                 }
             }
         } catch (IOException e) {
@@ -155,8 +159,8 @@ public class UDPClient {
 
     public static void main(String[] args) {
         UDPClient client = new UDPClient();
-        //client.sendFileAndReceiveAck("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
-        client.revisedSendAndReceived("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
+        client.sendFileAndReceiveAck("src/project_two/additional/practice_file.txt");
+        //client.revisedSendAndReceived("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt");
     }
 }
 
