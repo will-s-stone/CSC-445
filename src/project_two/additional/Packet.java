@@ -5,6 +5,7 @@ import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+
 public class Packet {
     private byte[] data;
     private byte[] rawFrame;
@@ -16,12 +17,13 @@ public class Packet {
     public enum PACKET_TYPE {READ, WRITE, DATA, ACK, ERROR}
     private String filename;
     private PACKET_TYPE packetType;
-    boolean lastDataPacket = false;
 
     //The idea here is everytime a packet is sent or received, I build a packet object with the raw data then interact with the class methods for setting and getting.
     public Packet(byte[] data, short blockNum){
         this.blockNum = blockNum;
-        this.rawFrame = new byte[516];
+        this.data = data;
+        this.rawFrame = new byte[data.length + 4];
+
         this.packetType = PACKET_TYPE.DATA;
         this.rawFrame[0] = 0;
         this.rawFrame[1] = 3;
@@ -50,11 +52,9 @@ public class Packet {
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
             this.blockNumByteArr = blockNumArr;
             this.blockNum = (short) ((blockNumArr[1] << 8) | (blockNumArr[0] & 0xff));
-
+            //int size = Math.min();
             this.data = Arrays.copyOfRange(rawFrame, 4, rawFrame.length);
-            if(this.data[511] == 0 && this.data[510] == 0){
-                lastDataPacket = true;
-            }
+
         }else if (rawFrame[0] == 0 && rawFrame[1] == 4){
             packetType = PACKET_TYPE.ACK;
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
@@ -97,7 +97,11 @@ public class Packet {
         return filename;
     }
     public boolean isLastDataPacket(){
-        return lastDataPacket;
+        if(rawFrame.length < 516){
+            return true;
+        } else {
+            return false;
+        }
     }
 
 

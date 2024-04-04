@@ -36,7 +36,7 @@ public class Client extends TFTP {
         //load the file and write the data map
         loadFile(filePath);
         while(true){
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            ByteBuffer buffer = ByteBuffer.allocate(516);
 
             for (short i = 0; i < packets.size(); i++) {
                 sendFrame(i, buffer);
@@ -60,8 +60,8 @@ public class Client extends TFTP {
 
     public void sendFrame(short blockNum, ByteBuffer buffer) throws IOException {
         buffer.clear();
-        buffer.put(packets.get(blockNum).getRawFrame());
-        //buffer = ByteBuffer.wrap(data.get(blockNum));
+        //buffer.put(packets.get(blockNum).getRawFrame());
+        buffer = ByteBuffer.wrap(packets.get(blockNum).getRawFrame());
         buffer.clear();
         CHANNEL.send(buffer, ADDRESS);
         System.out.println("Frame #" + blockNum + " ...");
@@ -71,24 +71,41 @@ public class Client extends TFTP {
 
     private void loadFile(String filePath) {
         File file = new File(filePath);
-        short blockNum = 0;
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            byte[] buffer = new byte[512];
-            int bytesRead;
-
-            while ((bytesRead = fis.read(buffer)) != -1 ) {
-                byte[] chunk = new byte[bytesRead];
-                System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+        try(FileInputStream fis = new FileInputStream(file)){
+            byte[] bytes = fis.readAllBytes();
+            //int bytesRead = 0;
+            int chunkSize = 512; // chunk size to divide
+            short blockNum = 0;
+            for(int i = 0; i < bytes.length; i += chunkSize){
+                int newChunkSize = Math.min(bytes.length, i+chunkSize);
+                byte[] chunk = Arrays.copyOfRange(bytes, i, newChunkSize);
                 Packet packet = new Packet(chunk, blockNum);
                 packets.put(blockNum, packet);
-                System.out.println("Loaded in block number: " + blockNum);
-                blockNum++;
+                blockNum ++;
+
             }
-            fis.close();
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+//        short blockNum = 0;
+//
+//        try (FileInputStream fis = new FileInputStream(file)) {
+//            byte[] buffer = new byte[512];
+//            int bytesRead;
+//
+//            while ((bytesRead = fis.read(buffer)) != -1 ) {
+//                byte[] chunk = new byte[bytesRead];
+//                System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+//                Packet packet = new Packet(chunk, blockNum);
+//                packets.put(blockNum, packet);
+//                System.out.println("Loaded in block number: " + blockNum);
+//                blockNum++;
+//            }
+//            fis.close();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
 
