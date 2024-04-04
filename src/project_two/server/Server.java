@@ -42,17 +42,15 @@ public class Server extends TFTP {
             buffer.clear();
             InetSocketAddress clientAddress = (InetSocketAddress) CHANNEL.receive(buffer);
             if(clientAddress != null){
-                //buffer.flip(); // This was why receivedBytes = 0;
 
-                //New stuff
+                //Dynamically obtain packets rather, needed to hit end condition
                 int bytesRead = buffer.position();
                 byte[] receivedBytes = new byte[bytesRead];
                 buffer.rewind();
                 buffer.get(receivedBytes);
                 Packet packet = new Packet(receivedBytes);
-                //End of new stuff
 
-                //Packet packet = new Packet(buffer.array());
+
                 packets.put(packet.getBlockNum(), packet);
 
                 System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
@@ -64,9 +62,6 @@ public class Server extends TFTP {
                 ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
                 CHANNEL.send(ackBuffer, clientAddress);
 
-//                if (packets.size() == 32){
-//                    System.out.println();
-//                }
                 if (packet.isLastDataPacket()) {
                     System.out.println("AHHHHH");
                     saveFile();
