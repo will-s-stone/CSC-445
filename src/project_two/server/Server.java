@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Server extends TFTP {
     int port;
-    TreeMap<Short, byte[]> packets = new TreeMap<>();
+    TreeMap<Short, Packet> packets = new TreeMap<>();
     private static final int PORT = 12345;
     private static final int BUFFER_SIZE = 1024;
     private InetSocketAddress ADDRESS;
@@ -42,20 +42,29 @@ public class Server extends TFTP {
             InetSocketAddress clientAddress = (InetSocketAddress) CHANNEL.receive(buffer);
             if(clientAddress != null){
                 buffer.flip();
-                String message = new String(buffer.array(), 0, buffer.limit());
-                System.out.println("Received message from " + clientAddress + ": " + message);
-                String response = "Server response to " + clientAddress;
+                Packet packet = new Packet(buffer.array());
+
+                System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
+
                 buffer.clear();
-                buffer.put(response.getBytes());
+
                 buffer.flip();
 
-                byte[] ack = {0, 7};
-                ByteBuffer ackBuffer = ByteBuffer.wrap(ack);
-                //CHANNEL.send(ackBuffer, clientAddress);
+                ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
+                CHANNEL.send(ackBuffer, clientAddress);
             }
         }
+    }
 
 
+    public void saveFile(){
+        try (FileOutputStream fos = new FileOutputStream("src/project_two/output/test_file.txt")) {
+            for (short i = 0; i < packets.size(); i++) {
+                fos.write(packets.get(i).getData());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

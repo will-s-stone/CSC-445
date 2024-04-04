@@ -10,6 +10,7 @@ public class Packet {
     private byte[] rawFrame;
     //private byte[] header;
     private short blockNum;
+    private byte[] blockNumByteArr;
     private boolean acked;
     //For Op Codes
     public enum PACKET_TYPE {READ, WRITE, DATA, ACK, ERROR}
@@ -46,6 +47,7 @@ public class Packet {
         }else if (rawFrame[0] == 0 && rawFrame[1] == 3){
             this.packetType = PACKET_TYPE.DATA;
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
+            this.blockNumByteArr = blockNumArr;
             ByteBuffer buffer = ByteBuffer.wrap(blockNumArr);
             this.blockNum = buffer.getShort();
             this.data = Arrays.copyOfRange(rawFrame, 4, 516);
@@ -86,6 +88,7 @@ public class Packet {
     public short getBlockNum(){
         return blockNum;
     }
+    public byte[] getBlockNumByteArr(){return blockNumByteArr;}
     public String getFilename(){
         return filename;
     }
