@@ -1,5 +1,6 @@
 package project_two.client;
 
+import jdk.jfr.Event;
 import project_two.additional.Packet;
 import project_two.additional.TFTP;
 
@@ -16,6 +17,11 @@ public class Client extends TFTP {
     HashSet<Short> ackedPackets = new HashSet<>();
     DatagramChannel CHANNEL;
     InetSocketAddress ADDRESS;
+    //SWS = Send Window Size
+    //LAR = Last Ack Received
+    //LFS = Last Frame Sent
+    private short SWS = 8, LAR = 0, LFS = 0;
+    private boolean DROP_PACKETS = false;
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -38,9 +44,23 @@ public class Client extends TFTP {
 
             short i = 0;
             while (packets.size() != ackedPackets.size()){
-                sendFrame(i, buffer);
-                receiveAck();
-                i++;
+                //Have to account for the fact that if packets are dropped, that we go back and send again,
+                // but need to keep track of the non-acked frames.
+                // change from 99% chance to 50% to replicate this
+                if ((LFS - LAR) < SWS){
+                    //If within window send frame
+                    sendFrame(LFS, buffer, DROP_PACKETS);
+                    LFS++;
+                    Thread.sleep(10);
+                } else {
+                    receiveAck(buffer);
+                }
+
+
+
+                //sendFrame(i, buffer, true);
+                //receiveAck();
+                //i++;
             }
 
 //            for (short i = 0; i < packets.size(); i++) {
@@ -53,13 +73,28 @@ public class Client extends TFTP {
 
     }
 
-    public void receiveAck() throws IOException {
+    public void receiveAck(ByteBuffer buffer) throws IOException {
+
         ByteBuffer ackBuffer = ByteBuffer.allocate(2);
         InetSocketAddress serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer);
         if (serverAddress != null) {
             ackBuffer.flip();
             byte[] ackArr = ackBuffer.array();
             short ack = (short) ((ackArr[1] << 8) | (ackArr[0] & 0xff));
+            //--------------------------------------------------
+            if(ack > LAR && ack <= LFS) {
+                ackedPackets.add(ack);
+                while ((LAR + 1) <= LFS && ackedPackets.contains(LAR + 1)){
+                    LAR++;
+                    //ackedPackets.remove(LAR); //Unsure about this
+                }
+            }
+            for (short i = LAR; i <= LFS; i++) {
+                if(!ackedPackets.contains(i)){
+                    sendFrame(i, buffer, DROP_PACKETS); //Hopefully retransmit un-acked frames
+                }
+            }
+            //--------------------------------------------------
             //Update ack status
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
@@ -68,7 +103,21 @@ public class Client extends TFTP {
         } else {System.out.println("Nothing quite yet"); }
     }
 
-    public void sendFrame(short blockNum, ByteBuffer buffer) throws IOException {
+    public void sendFrame(short blockNum, ByteBuffer buffer, boolean dropsEnable) throws IOException {
+
+        if(!dropsEnable){
+            sendFrameNoDrop(blockNum, buffer);
+            return;
+        }
+        int randomNumber = new Random().nextInt(100);
+        if(randomNumber < 99){
+            sendFrameNoDrop(blockNum, buffer);
+        } else {
+            System.out.println("It worked????");
+        }
+        return;
+    }
+    public void sendFrameNoDrop(short blockNum, ByteBuffer buffer) throws IOException {
         //If we have sent all the packets, return.
         if(blockNum >= packets.size()){
             return;
@@ -80,7 +129,7 @@ public class Client extends TFTP {
         buffer.clear();
 
         CHANNEL.send(buffer, ADDRESS);
-        System.out.println("Frame #" + blockNum + " ...");
+        System.out.println("Frame #" + blockNum + " Sent...");
     }
 
 
