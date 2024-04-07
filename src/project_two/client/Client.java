@@ -6,11 +6,13 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class Client{
     private String HOST;
     private int PORT;
+    private static final int BUFFER_SIZE = 516;
     TreeMap<Short, Packet> packets = new TreeMap<>();
     HashSet<Short> ackedPackets = new HashSet<>();
     DatagramChannel CHANNEL;
@@ -24,7 +26,8 @@ public class Client{
 
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 12345);
-        client.start("C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt", 8);
+        client.run();
+        //"C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt"
     }
     public Client(String host, int port) throws IOException {
         CHANNEL = DatagramChannel.open();
@@ -34,17 +37,89 @@ public class Client{
         ADDRESS = new InetSocketAddress(HOST, PORT);
     }
 
-    public void start(String filePath, int windowSize) throws IOException, InterruptedException {
+    public void run() throws IOException, InterruptedException {
+        //Start everything and figure out what to do...
+        //Can stick this whole thing is a while true for testing purposes
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("What would you like to do");
+        String request = scanner.next();
+        if (request.equals("WRQ")){
+            System.out.println("Filename?");
+            String filename = scanner.next();
+            //Should implement something to wait until the server responds
+            byte[] WRQ = {0, 2};
+            ByteBuffer buffer = ByteBuffer.wrap(WRQ);
+            CHANNEL.send(buffer, ADDRESS);
+            System.out.println("Sent write request...");
+            Thread.sleep(1000);
+
+            System.out.println("DIAMONDS ARE MADE UNDER PRESSURE");
+            sendDataAndReceiveAck(filename);
+
+        } else if (request.equals("RRQ")){
+            //We only want to send acks when data comes in...
+            //So we transmit the file we want and then receive data packets.
+            System.out.println("What file do you want from the server?");
+            String filename = scanner.next();
+            byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
+            byte[] opCode = {0, 1};
+            byte[] bytes = new byte[filenameBytes.length + opCode.length];
+
+            System.arraycopy(opCode, 0, bytes, 0, opCode.length);
+            System.arraycopy(filenameBytes, 0, bytes, opCode.length, filenameBytes.length);
+
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            // Send the read request packet
+            CHANNEL.send(buffer, ADDRESS);
+
+            receiveDataPackets();
+        }
+
+    }
+    public void receiveDataPackets() throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+        //ByteBuffer buffer = null;
+        while(true){
+            buffer.clear();
+            InetSocketAddress clientAddress = (InetSocketAddress) CHANNEL.receive(buffer);
+            if(clientAddress != null){
+
+                //Dynamically obtain packets rather, needed to hit end condition
+                int bytesRead = buffer.position();
+                byte[] receivedBytes = new byte[bytesRead];
+                buffer.rewind();
+                buffer.get(receivedBytes);
+                Packet packet = new Packet(receivedBytes);
+
+
+                packets.put(packet.getBlockNum(), packet);
+
+                System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
+
+                buffer.clear();
+
+                buffer.flip();
+
+                ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
+                CHANNEL.send(ackBuffer, clientAddress);
+
+                if (packet.isLastDataPacket()) {
+                    System.out.println("AHHHHH");
+                    saveFile();
+                    break;
+                }
+            }
+        }
+    }
+
+    public void sendDataAndReceiveAck(String filePath) throws IOException, InterruptedException {
         //load the file and write the data map
         loadFile(filePath);
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
-
-            short i = 0;
             while (packets.size() != ackedPackets.size()){
                 //Have to account for the fact that if packets are dropped, that we go back and send again,
                 // but need to keep track of the non-acked frames.
-                // change from 99% chance to 50% to replicate this
                 if ((LFS - LAR) < SWS){
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
@@ -56,7 +131,6 @@ public class Client{
             }
             break;
         }
-
     }
 
     public void receiveAck(ByteBuffer buffer) throws IOException {
@@ -145,6 +219,28 @@ public class Client{
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    // For processing read requests
+    public void saveFile(){
+        byte[] bytes = new byte[getTotalBytesInPackets()];
+        for (short i = 0; i < packets.size(); i++) {
+            System.arraycopy(packets.get(i).getData(), 0, bytes, 512*i, packets.get(i).getData().length);
+            packets.get(i);
+        }
+        try (FileOutputStream fos = new FileOutputStream("src/project_two/output/test_file.txt")) {
+            fos.write(bytes);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public int getTotalBytesInPackets(){
+        int sum = 0;
+        for (short i = 0; i < packets.size(); i++) {
+            sum += packets.get(i).getData().length;
+        }
+        return sum;
     }
 
 }

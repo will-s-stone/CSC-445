@@ -33,18 +33,19 @@ public class Packet {
         //System.out.println("Hey it's packet class here!!! " + blockNum);
         // Test this
         System.arraycopy(data, 0, this.rawFrame, 4, data.length);
-
     }
+
+
     public Packet(byte[] rawFrame){
         //Do some stuff in here to get all the data from the raw frame. Eg. op codes, etc.
         //No need to account for modes as we are only supporting octet transmission.
         this.rawFrame = rawFrame;
-
         if(rawFrame[0] == 0 && rawFrame[1] == 1){
             this.packetType = PACKET_TYPE.READ;
             //256 byte filename, issues may arise with encoding
             byte[] filenameArr = Arrays.copyOfRange(rawFrame, 2, 258);
-            this.filename = new String(filenameArr);
+
+            this.filename = new String(filenameArr).trim();
         } else if (rawFrame[0] == 0 && rawFrame[1] == 2){
             this.packetType = PACKET_TYPE.WRITE;
         }else if (rawFrame[0] == 0 && rawFrame[1] == 3){
