@@ -1,8 +1,6 @@
 package project_two.client;
 
-import jdk.jfr.Event;
 import project_two.additional.Packet;
-import project_two.additional.TFTP;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -10,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.*;
 
-public class Client extends TFTP {
+public class Client{
     private String HOST;
     private int PORT;
     TreeMap<Short, Packet> packets = new TreeMap<>();
@@ -20,8 +18,8 @@ public class Client extends TFTP {
     //SWS = Send Window Size
     //LAR = Last Ack Received
     //LFS = Last Frame Sent
-    private short SWS = 8, LAR = 0, LFS = 0;
-    private boolean DROP_PACKETS = false;
+    private short SWS = 13, LAR = -1, LFS = 0;
+    private boolean DROP_PACKETS = true;
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -55,43 +53,40 @@ public class Client extends TFTP {
                 } else {
                     receiveAck(buffer);
                 }
-
-
-
-                //sendFrame(i, buffer, true);
-                //receiveAck();
-                //i++;
             }
-
-//            for (short i = 0; i < packets.size(); i++) {
-//                sendFrame(i, buffer);
-//                Thread.sleep(0, 10);
-//                receiveAck();
-//            }
             break;
         }
 
     }
 
     public void receiveAck(ByteBuffer buffer) throws IOException {
-
+        // Allocate 2 bytes to receive the ack, from here we add it to acked packets and update variables.
         ByteBuffer ackBuffer = ByteBuffer.allocate(2);
         InetSocketAddress serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer);
+        // If something is here, let's get it
         if (serverAddress != null) {
             ackBuffer.flip();
             byte[] ackArr = ackBuffer.array();
             short ack = (short) ((ackArr[1] << 8) | (ackArr[0] & 0xff));
             //--------------------------------------------------
+            // If we haven't received it yet, and it is within our window
             if(ack > LAR && ack <= LFS) {
                 ackedPackets.add(ack);
-                while ((LAR + 1) <= LFS && ackedPackets.contains(LAR + 1)){
+                // While the next expected ack is less then or equal to the last frame sent and acked packets contains the ack after the last ack received.
+                //short nextAck = (short) (LAR + 1);
+                while ((LAR + 1) <= LFS && ackedPackets.contains((short)(LAR + 1))){
                     LAR++;
                     //ackedPackets.remove(LAR); //Unsure about this
                 }
             }
             for (short i = LAR; i <= LFS; i++) {
                 if(!ackedPackets.contains(i)){
-                    sendFrame(i, buffer, DROP_PACKETS); //Hopefully retransmit un-acked frames
+                    if(i == -1){
+                        //Edge case that occurs if the firs packet is dropped
+                        sendFrame((short) 0, buffer, DROP_PACKETS);
+                    } else {
+                        sendFrame(i, buffer, DROP_PACKETS); //Hopefully retransmit un-acked frames
+                    }
                 }
             }
             //--------------------------------------------------

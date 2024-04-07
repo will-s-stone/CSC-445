@@ -1,22 +1,15 @@
 package project_two.server;
 
 import project_two.additional.Packet;
-import project_two.additional.TFTP;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
 
-public class Server extends TFTP {
-    int port;
+public class Server{
+
     TreeMap<Short, Packet> packets = new TreeMap<>();
     private static final int PORT = 12345;
     private static final int BUFFER_SIZE = 516;
