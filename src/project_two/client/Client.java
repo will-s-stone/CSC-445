@@ -22,7 +22,8 @@ public class Client{
     //LFS = Last Frame Sent
     private short SWS = 13, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = true;
-
+    private long ENCRYPTION_KEY = 12345;
+    private String OUTPUT_PATH;
 
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 12345);
@@ -41,19 +42,20 @@ public class Client{
         //Start everything and figure out what to do...
         //Can stick this whole thing is a while true for testing purposes
         Scanner scanner = new Scanner(System.in);
-        System.out.println("What would you like to do");
+        System.out.println("What would you like to do? \n Your options include: \nWRQ = transfer a file to the server \nRRQ = request a file to be transferred from the server to you");
         String request = scanner.next();
         if (request.equals("WRQ")){
             System.out.println("Filename?");
             String filename = scanner.next();
+            if(filename.equals("y")){
+                filename = "src/project_two/additional/test_file.txt";
+            }
             //Should implement something to wait until the server responds
             byte[] WRQ = {0, 2};
             ByteBuffer buffer = ByteBuffer.wrap(WRQ);
             CHANNEL.send(buffer, ADDRESS);
             System.out.println("Sent write request...");
             Thread.sleep(1000);
-
-            System.out.println("DIAMONDS ARE MADE UNDER PRESSURE");
             sendDataAndReceiveAck(filename);
 
         } else if (request.equals("RRQ")){
@@ -89,7 +91,9 @@ public class Client{
                 byte[] receivedBytes = new byte[bytesRead];
                 buffer.rewind();
                 buffer.get(receivedBytes);
-                Packet packet = new Packet(receivedBytes);
+                byte[] decryptedBytes = decrypt(receivedBytes, ENCRYPTION_KEY);
+
+                Packet packet = new Packet(decryptedBytes);
 
 
                 packets.put(packet.getBlockNum(), packet);
@@ -193,7 +197,9 @@ public class Client{
         }
         buffer.clear();
 
-        buffer = ByteBuffer.wrap(packets.get(blockNum).getRawFrame());
+        byte[] encryptedData = encrypt(packets.get(blockNum).getRawFrame(), ENCRYPTION_KEY);
+
+        buffer = ByteBuffer.wrap(encryptedData);
 
         buffer.clear();
 
@@ -241,6 +247,19 @@ public class Client{
             sum += packets.get(i).getData().length;
         }
         return sum;
+    }
+
+    public static byte[] encrypt(byte[] data, long key) {
+        byte[] encrypted = new byte[data.length];
+        for (int i = 0; i < data.length; i++) {
+            encrypted[i] = (byte) (data[i] ^ (key & 0xFF));
+            key = (key >> 8) | ((key & 0xFF) << 56);
+        }
+        return encrypted;
+    }
+
+    public static byte[] decrypt(byte[] encryptedData, long key) {
+        return encrypt(encryptedData, key);
     }
 
 }

@@ -21,6 +21,9 @@ public class Server{
     HashSet<Short> ackedPackets = new HashSet<>();
     private short SWS = 13, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = true;
+    private long ENCRYPTION_KEY = 12345;
+
+    private String OUTPUT_PATH;
 
     public Server() throws IOException {
         CHANNEL = DatagramChannel.open();
@@ -75,7 +78,9 @@ public class Server{
                 byte[] receivedBytes = new byte[bytesRead];
                 buffer.rewind();
                 buffer.get(receivedBytes);
-                Packet packet = new Packet(receivedBytes);
+                byte[] decryptedBytes = decrypt(receivedBytes, ENCRYPTION_KEY);
+
+                Packet packet = new Packet(decryptedBytes);
 
 
                 packets.put(packet.getBlockNum(), packet);
@@ -105,7 +110,7 @@ public class Server{
             System.arraycopy(packets.get(i).getData(), 0, bytes, 512*i, packets.get(i).getData().length);
             packets.get(i);
         }
-        try (FileOutputStream fos = new FileOutputStream("src/project_two/output/test_file.txt")) {
+        try (FileOutputStream fos = new FileOutputStream(OUTPUT_PATH)) {
             fos.write(bytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -163,7 +168,9 @@ public class Server{
         }
         buffer.clear();
 
-        buffer = ByteBuffer.wrap(packets.get(blockNum).getRawFrame());
+        byte[] encryptedData = encrypt(packets.get(blockNum).getRawFrame(), ENCRYPTION_KEY);
+
+        buffer = ByteBuffer.wrap(encryptedData);;
 
         buffer.clear();
 
@@ -228,6 +235,18 @@ public class Server{
 
             System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
         } else {System.out.println("Nothing quite yet"); }
+    }
+    public static byte[] encrypt(byte[] data, long key) {
+        byte[] encrypted = new byte[data.length];
+        for (int i = 0; i < data.length; i++) {
+            encrypted[i] = (byte) (data[i] ^ (key & 0xFF));
+            key = (key >> 8) | ((key & 0xFF) << 56);
+        }
+        return encrypted;
+    }
+
+    public static byte[] decrypt(byte[] encryptedData, long key) {
+        return encrypt(encryptedData, key);
     }
 
 
