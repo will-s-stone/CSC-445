@@ -20,9 +20,9 @@ public class Client{
     //SWS = Send Window Size
     //LAR = Last Ack Received
     //LFS = Last Frame Sent
-    private short SWS = 13, LAR = -1, LFS = 0;
-    private boolean DROP_PACKETS = true;
-    private long ENCRYPTION_KEY = 12345;
+    private short SWS = 0, LAR = -1, LFS = 0;
+    private boolean DROP_PACKETS = false;
+    private long ENCRYPTION_KEY;
     private String OUTPUT_PATH;
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -41,19 +41,29 @@ public class Client{
     public void run() throws IOException, InterruptedException {
         //Start everything and figure out what to do...
         //Can stick this whole thing is a while true for testing purposes
+        OUTPUT_PATH = "src/project_two/output/test_file.txt";
         Scanner scanner = new Scanner(System.in);
         System.out.println("What would you like to do? \n Your options include: \nWRQ = transfer a file to the server \nRRQ = request a file to be transferred from the server to you");
         String request = scanner.next();
+        System.out.println("Please enter an encryption key...");
+        ENCRYPTION_KEY = scanner.nextLong();
+        sendEncryptionKey();
+
         if (request.equals("WRQ")){
-            System.out.println("Filename?");
+            System.out.println("What file would you like to send?");
             String filename = scanner.next();
             if(filename.equals("y")){
-                filename = "src/project_two/additional/test_file.txt";
+                filename = "src/project_two/additional/practice_file.txt";
             }
-            //Should implement something to wait until the server responds
+            System.out.println("What would you like the send window size to be?");
+            SWS = scanner.nextShort();
+
             byte[] WRQ = {0, 2};
             ByteBuffer buffer = ByteBuffer.wrap(WRQ);
             CHANNEL.send(buffer, ADDRESS);
+            System.out.println("Would you like to drop 1% of packets? \n Yes or No?");
+            String drop = scanner.next();
+            if (drop.equalsIgnoreCase("yes")) DROP_PACKETS = true;
             System.out.println("Sent write request...");
             Thread.sleep(1000);
             sendDataAndReceiveAck(filename);
@@ -63,6 +73,9 @@ public class Client{
             //So we transmit the file we want and then receive data packets.
             System.out.println("What file do you want from the server?");
             String filename = scanner.next();
+            if (filename.equals("y")){
+                filename = "src/project_two/additional/practice_file.txt";
+            }
             byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
             byte[] opCode = {0, 1};
             byte[] bytes = new byte[filenameBytes.length + opCode.length];
@@ -77,6 +90,22 @@ public class Client{
             receiveDataPackets();
         }
 
+    }
+    public void sendEncryptionKey() throws IOException {
+        byte[] key = longToByteArr(ENCRYPTION_KEY);
+        byte[] keyPacket = new byte[key.length + 2];
+        byte[] op = {0,6};
+        System.arraycopy(op, 0, keyPacket, 0, 2);
+        System.arraycopy(key, 0, keyPacket, 2, key.length);
+        ByteBuffer buffer = ByteBuffer.wrap(keyPacket);
+        CHANNEL.send(buffer, ADDRESS);
+    }
+    private static byte[] longToByteArr(long l){
+        byte[] longBytes = new byte[8];
+        for (int i = 0; i < 8; i++) {
+            longBytes[i] = (byte) (l >> (i * 8));
+        }
+        return longBytes;
     }
     public void receiveDataPackets() throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -128,7 +157,7 @@ public class Client{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
                     LFS++;
-                    Thread.sleep(10);
+                    //Thread.sleep(1);
                 } else {
                     receiveAck(buffer);
                 }
@@ -154,7 +183,6 @@ public class Client{
                 //short nextAck = (short) (LAR + 1);
                 while ((LAR + 1) <= LFS && ackedPackets.contains((short)(LAR + 1))){
                     LAR++;
-                    //ackedPackets.remove(LAR); //Unsure about this
                 }
             }
             for (short i = LAR; i <= LFS; i++) {
@@ -235,7 +263,7 @@ public class Client{
             System.arraycopy(packets.get(i).getData(), 0, bytes, 512*i, packets.get(i).getData().length);
             packets.get(i);
         }
-        try (FileOutputStream fos = new FileOutputStream("src/project_two/output/test_file.txt")) {
+        try (FileOutputStream fos = new FileOutputStream(OUTPUT_PATH)) {
             fos.write(bytes);
         } catch (IOException e) {
             throw new RuntimeException(e);

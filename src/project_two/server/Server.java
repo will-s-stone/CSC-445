@@ -19,9 +19,9 @@ public class Server{
     //private InetSocketAddress ADDRESS;
     private DatagramChannel CHANNEL;
     HashSet<Short> ackedPackets = new HashSet<>();
-    private short SWS = 13, LAR = -1, LFS = 0;
-    private boolean DROP_PACKETS = true;
-    private long ENCRYPTION_KEY = 12345;
+    private short SWS = 8, LAR = -1, LFS = 0;
+    private boolean DROP_PACKETS = false;
+    private long ENCRYPTION_KEY;
 
     private String OUTPUT_PATH;
 
@@ -40,17 +40,27 @@ public class Server{
     public void run() throws IOException, InterruptedException {
         // Wait for something to happen
         //We can handle this in a linear fashion by assuming that the first packet we get will either be a rrq or a wrq
-        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+        OUTPUT_PATH = "src/project_two/output/test_file.txt";
+
         while(true){
+            ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
             InetSocketAddress clientAddress = (InetSocketAddress) CHANNEL.receive(buffer);
+
             if(clientAddress != null){
+                handleKey();
                 //Convert byte[] to packet, then process according to wrq or rrq
                 //Dynamically obtain packets rather, needed to hit end condition
+
                 int bytesRead = buffer.position();
                 byte[] receivedBytes = new byte[bytesRead];
                 buffer.rewind();
                 buffer.get(receivedBytes);
+
                 Packet packet = new Packet(receivedBytes);
+
+                if (packet.getPacketType() == Packet.PACKET_TYPE.KEY){
+                    ENCRYPTION_KEY = packet.getKey();
+                }
 
                 if(packet.getPacketType() == Packet.PACKET_TYPE.READ){
                     //Newish stuff
@@ -62,6 +72,10 @@ public class Server{
                 }
             }
         }
+
+    }
+    public void handleKey(){
+        ByteBuffer keyBuffer = ByteBuffer.allocate(BUFFER_SIZE);
 
     }
 

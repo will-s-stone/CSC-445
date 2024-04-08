@@ -14,8 +14,9 @@ public class Packet {
     private byte[] blockNumByteArr;
     private boolean acked;
     //For Op Codes
-    public enum PACKET_TYPE {READ, WRITE, DATA, ACK, ERROR}
+    public enum PACKET_TYPE {READ, WRITE, DATA, ACK, ERROR, KEY}
     private String filename;
+    private long key;
     private PACKET_TYPE packetType;
 
     //The idea here is everytime a packet is sent or received, I build a packet object with the raw data then interact with the class methods for setting and getting.
@@ -55,7 +56,6 @@ public class Packet {
             this.blockNum = (short) ((blockNumArr[1] << 8) | (blockNumArr[0] & 0xff));
             //int size = Math.min();
             this.data = Arrays.copyOfRange(rawFrame, 4, rawFrame.length);
-
         }else if (rawFrame[0] == 0 && rawFrame[1] == 4){
             packetType = PACKET_TYPE.ACK;
             byte[] blockNumArr = {rawFrame[2], rawFrame[3]};
@@ -64,12 +64,25 @@ public class Packet {
         }else if (rawFrame[0] == 0 && rawFrame[1] == 5){
             packetType = PACKET_TYPE.ERROR;
             throw new java.lang.Error("Packet Type is 'Error'. Refer to Packet Class.");
+        } else if (rawFrame[0] == 0 && rawFrame[1] == 6){ // Key packet
+            packetType = PACKET_TYPE.KEY;
+            byte[] keyArr = new byte[8];
+            System.arraycopy(rawFrame, 2, keyArr, 0, 8);
+            key = byteArrToLong(keyArr);
         } else {
             throw new java.lang.Error("Packet Type Unknown. Refer to Packet Class.");
         }
         this.acked = false;
     }
-
+    private static long byteArrToLong(byte[] byteArray) {
+        long value = 0;
+        int len = Math.min(byteArray.length, 8); // Ensure we handle at most 8 bytes
+        for (int i = len - 1; i >= 0; i--) {
+            value <<= 8; // Shift left by 8 bits
+            value |= (byteArray[i] & 0xFFL); // Combine with the byte value
+        }
+        return value;
+    }
     public PACKET_TYPE getPacketType(){
         return packetType;
     }
@@ -96,6 +109,9 @@ public class Packet {
     public byte[] getBlockNumByteArr(){return blockNumByteArr;}
     public String getFilename(){
         return filename;
+    }
+    public long getKey(){
+        return key;
     }
     public boolean isLastDataPacket(){
         if(rawFrame.length < 516){
