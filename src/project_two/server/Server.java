@@ -21,7 +21,7 @@ public class Server{
     private short SWS = 8, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = false;
     private String OUTPUT_PATH;
-    private long TIMEOUT = 10; //milliseconds
+    private long TIMEOUT = 5; //milliseconds
 
     public Server() throws IOException {
         CHANNEL = DatagramChannel.open();
@@ -91,24 +91,15 @@ public class Server{
                 buffer.rewind();
                 buffer.get(receivedBytes);
                 byte[] decryptedBytes = decrypt(receivedBytes, ENCRYPTION_KEY);
-
                 Packet packet = new Packet(decryptedBytes);
-
-
                 packets.put(packet.getBlockNum(), packet);
-
-                //System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
-
                 buffer.clear();
-
                 buffer.flip();
 
                 ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
                 CHANNEL.send(ackBuffer, clientAddress);
-                System.out.println("Ack => " + packet.getBlockNum());
 
                 if (packet.isLastDataPacket() && packet.getBlockNum() == (short)(packets.size()-1)) {
-
                     saveFile();
                     break;
                 }
@@ -145,9 +136,6 @@ public class Server{
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
             while (packets.size() != ackedPackets.size()){
-                //Have to account for the fact that if packets are dropped, that we go back and send again,
-                // but need to keep track of the non-acked frames.
-                // change from 99% chance to 50% to replicate this
                 if ((LFS - LAR) < SWS){
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS, clientAddress);
@@ -186,7 +174,6 @@ public class Server{
         buffer.clear();
 
         CHANNEL.send(buffer, clientAddress);
-        //System.out.println("Frame #" + blockNum + " Sent...");
     }
 
     private void loadFile(String filePath) {
@@ -194,7 +181,6 @@ public class Server{
         System.out.println(filePath);
         try(FileInputStream fis = new FileInputStream(file)){
             byte[] bytes = fis.readAllBytes();
-            //int bytesRead = 0;
             int chunkSize = 512; // chunk size to divide
             short blockNum = 0;
             for(int i = 0; i < bytes.length; i += chunkSize){
@@ -221,12 +207,11 @@ public class Server{
             // Update ack status
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
-            System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
         }
         while (ackedPackets.contains((short)(LAR + 1))) {
             LAR++;
         }
-        System.out.println("LAR is now => " + LAR);
+
         for (short i = LAR; i <= LFS; i++) {
             if (!ackedPackets.contains(i)) {
                 if (i == -1) {

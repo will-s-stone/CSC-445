@@ -21,19 +21,20 @@ public class Client{
     private short SWS = 0, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = false;
     private String OUTPUT_PATH;
-    private long TIMEOUT = 10; // milliseconds
+    private long TIMEOUT = 4; // milliseconds
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client();
         client.run();
-        //"C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt"
     }
     public Client() throws IOException {
         CHANNEL = DatagramChannel.open();
         CHANNEL.configureBlocking(false);
         ADDRESS = new InetSocketAddress(HOST, PORT);
         System.out.println("Client sending to " + HOST + PORT);
+        if(HOST.equalsIgnoreCase("localhost")) TIMEOUT = 5;
+        TIMEOUT = 2;
     }
 
     public void run() throws IOException, InterruptedException {
@@ -108,7 +109,6 @@ public class Client{
     }
     public void receiveDataPackets() throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
-        //ByteBuffer buffer = null;
         while(true){
             buffer.clear();
             InetSocketAddress clientAddress = (InetSocketAddress) CHANNEL.receive(buffer);
@@ -120,23 +120,14 @@ public class Client{
                 buffer.rewind();
                 buffer.get(receivedBytes);
                 byte[] decryptedBytes = decrypt(receivedBytes, ENCRYPTION_KEY);
-
                 Packet packet = new Packet(decryptedBytes);
-
-
                 packets.put(packet.getBlockNum(), packet);
-
-                //System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
-
                 buffer.clear();
-
                 buffer.flip();
-
                 ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
                 CHANNEL.send(ackBuffer, clientAddress);
 
-                if (packet.isLastDataPacket()) {
-                    //System.out.println("AHHHHH");
+                if (packet.isLastDataPacket() && packet.getBlockNum() == (short)(packets.size()-1)) {
                     saveFile();
                     break;
                 }
@@ -151,8 +142,6 @@ public class Client{
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
             while (packets.size() >= ackedPackets.size()){
-                //Have to account for the fact that if packets are dropped, that we go back and send again,
-                // but need to keep track of the non-acked frames.
                 if ((LFS - LAR) < SWS){
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
@@ -167,7 +156,7 @@ public class Client{
             timer = System.nanoTime()-timer;
             long bits = getTotalBytesInPackets() * 8L;
 
-            long throughput = bits / (timer / 1000000000);
+            double throughput = (double) bits / (double) (timer / 1000000000);
             System.out.println("Throughput: " + throughput + " bits per second \nWindow size of: "  + SWS + "\nDropped packets: " + DROP_PACKETS);
             break;
         }
@@ -185,15 +174,14 @@ public class Client{
             // Update ack status
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
-            System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
+            //System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
         }
 
         // Slide the window if possible
         while (ackedPackets.contains((short)(LAR + 1))) {
             LAR++;
         }
-        System.out.println("LAR is now => " + LAR);
-
+        //System.out.println("LAR is now => " + LAR);
         // Retransmit un-acked frames
         for (short i = LAR; i <= LFS; i++) {
             if (!ackedPackets.contains(i)) {
@@ -210,7 +198,6 @@ public class Client{
     }
 
     public void sendFrame(short blockNum, ByteBuffer buffer, boolean dropsEnable) throws IOException {
-
         if(!dropsEnable){
             sendFrameNoDrop(blockNum, buffer);
             return;
@@ -218,11 +205,10 @@ public class Client{
         int randomNumber = new Random().nextInt(100);
         if(randomNumber < 99){
             sendFrameNoDrop(blockNum, buffer);
-        } else {
-            System.out.println("Dropped packet #" + blockNum);
         }
         return;
     }
+
     public void sendFrameNoDrop(short blockNum, ByteBuffer buffer) throws IOException {
         //If we have sent all the packets, return.
         if(blockNum >= packets.size()){
@@ -237,7 +223,7 @@ public class Client{
         buffer.clear();
 
         CHANNEL.send(buffer, ADDRESS);
-        System.out.println("Frame #" + blockNum + " Sent...");
+        //System.out.println("Frame #" + blockNum + " Sent...");
     }
 
 
