@@ -22,8 +22,8 @@ public class Server{
     private short SWS = 8, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = false;
     private long ENCRYPTION_KEY;
-
     private String OUTPUT_PATH;
+    private long TIMEOUT = 10; //milliseconds
 
     public Server() throws IOException {
         CHANNEL = DatagramChannel.open();
@@ -154,7 +154,7 @@ public class Server{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS, clientAddress);
                     LFS++;
-                    Thread.sleep(0, 10);
+                    Thread.sleep(TIMEOUT);
                 } else {
                     receiveAck(buffer, clientAddress);
                 }
@@ -214,41 +214,31 @@ public class Server{
     public void receiveAck(ByteBuffer buffer, InetSocketAddress clientAddress) throws IOException {
         // Allocate 2 bytes to receive the ack, from here we add it to acked packets and update variables.
         ByteBuffer ackBuffer = ByteBuffer.allocate(2);
-        InetSocketAddress serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer);
-        // If something is here, let's get it
-        if (serverAddress != null) {
+        InetSocketAddress serverAddress;
+        while ((serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer)) != null) {
             ackBuffer.flip();
             byte[] ackArr = ackBuffer.array();
             short ack = (short) ((ackArr[1] << 8) | (ackArr[0] & 0xff));
-            //--------------------------------------------------
-            // If we haven't received it yet, and it is within our window
-            if(ack > LAR && ack <= LFS) {
-                ackedPackets.add(ack);
-                // While the next expected ack is less then or equal to the last frame sent and acked packets contains the ack after the last ack received.
-                //short nextAck = (short) (LAR + 1);
-                while ((LAR + 1) <= LFS && ackedPackets.contains((short)(LAR + 1))){
-                    LAR++;
-                    //ackedPackets.remove(LAR); //Unsure about this
-                }
-            }
-            for (short i = LAR; i <= LFS; i++) {
-                if(!ackedPackets.contains(i)){
-                    if(i == -1){
-                        //Edge case that occurs if the firs packet is dropped
-                        sendFrame((short) 0, buffer, DROP_PACKETS, clientAddress);
-                    } else {
-                        sendFrame(i, buffer, DROP_PACKETS, clientAddress); //Hopefully retransmit un-acked frames
-                    }
-                }
-            }
-            //--------------------------------------------------
-            //Update ack status
+
+            // Update ack status
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
-
-            //System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
-
-        } else {System.out.println("Nothing quite yet"); }
+            System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
+        }
+        while (ackedPackets.contains((short)(LAR + 1))) {
+            LAR++;
+        }
+        System.out.println("LAR is now => " + LAR);
+        for (short i = LAR; i <= LFS; i++) {
+            if (!ackedPackets.contains(i)) {
+                if (i == -1) {
+                    //Edge case that occurs if the firs packet is dropped
+                    sendFrame((short) 0, buffer, DROP_PACKETS, clientAddress);
+                } else {
+                    sendFrame(i, buffer, DROP_PACKETS, clientAddress); //Hopefully retransmit un-acked frames
+                }
+            }
+        }
     }
     public static byte[] encrypt(byte[] data, long key) {
         byte[] encrypted = new byte[data.length];

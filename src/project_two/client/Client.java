@@ -24,6 +24,7 @@ public class Client{
     private boolean DROP_PACKETS = false;
     private long ENCRYPTION_KEY;
     private String OUTPUT_PATH;
+    private long TIMEOUT = 10; // milliseconds
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
@@ -66,7 +67,7 @@ public class Client{
             String drop = scanner.next();
             if (drop.equalsIgnoreCase("yes")) DROP_PACKETS = true;
             System.out.println("Sent write request...");
-            Thread.sleep(1000);
+            Thread.sleep(100);
 
             sendDataAndReceiveAck(filename);
 
@@ -160,7 +161,7 @@ public class Client{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
                     LFS++;
-                    Thread.sleep(100);
+                    Thread.sleep(TIMEOUT);
                 } else {
                     if(ackedPackets.size() != packets.size()){
                         receiveAck(buffer);
@@ -191,22 +192,22 @@ public class Client{
             System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
         }
 
-// Slide the window if possible
+        // Slide the window if possible
         while (ackedPackets.contains((short)(LAR + 1))) {
             LAR++;
         }
         System.out.println("LAR is now => " + LAR);
 
-// Retransmit unacknowledged frames
+        // Retransmit un-acked frames
         for (short i = LAR; i <= LFS; i++) {
             if (!ackedPackets.contains(i)) {
                 if (i == -1) {
                     // Edge case that occurs if the first packet is dropped
                     sendFrame((short) 0, buffer, DROP_PACKETS);
-                    Thread.sleep(1);
+                    Thread.sleep(TIMEOUT);
                 } else {
                     sendFrame(i, buffer, DROP_PACKETS); // Hopefully retransmit un-acked frames
-                    Thread.sleep(1);
+                    Thread.sleep(TIMEOUT);
                 }
             }
         }
