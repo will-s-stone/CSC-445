@@ -129,7 +129,7 @@ public class Client{
 
                 packets.put(packet.getBlockNum(), packet);
 
-                System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
+                //System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
 
                 buffer.clear();
 
@@ -139,7 +139,7 @@ public class Client{
                 CHANNEL.send(ackBuffer, clientAddress);
 
                 if (packet.isLastDataPacket()) {
-                    System.out.println("AHHHHH");
+                    //System.out.println("AHHHHH");
                     saveFile();
                     break;
                 }
@@ -153,16 +153,18 @@ public class Client{
         long timer = System.nanoTime();
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
-            while (packets.size() != ackedPackets.size()){
+            while (packets.size() >= ackedPackets.size()){
                 //Have to account for the fact that if packets are dropped, that we go back and send again,
                 // but need to keep track of the non-acked frames.
                 if ((LFS - LAR) < SWS){
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
                     LFS++;
-                    Thread.sleep(0, 10);
+                    Thread.sleep(100);
                 } else {
-                    receiveAck(buffer);
+                    if(ackedPackets.size() != packets.size()){
+                        receiveAck(buffer);
+                    } else break;
                 }
             }
             timer = System.nanoTime()-timer;
@@ -174,42 +176,40 @@ public class Client{
         }
     }
 
-    public void receiveAck(ByteBuffer buffer) throws IOException {
+    public void receiveAck(ByteBuffer buffer) throws IOException, InterruptedException {
         // Allocate 2 bytes to receive the ack, from here we add it to acked packets and update variables.
         ByteBuffer ackBuffer = ByteBuffer.allocate(2);
-        InetSocketAddress serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer);
-        // If something is here, let's get it
-        if (serverAddress != null) {
+        InetSocketAddress serverAddress;
+        while ((serverAddress = (InetSocketAddress) CHANNEL.receive(ackBuffer)) != null) {
             ackBuffer.flip();
             byte[] ackArr = ackBuffer.array();
             short ack = (short) ((ackArr[1] << 8) | (ackArr[0] & 0xff));
-            //--------------------------------------------------
-            // If we haven't received it yet, and it is within our window
-            if(ack > LAR && ack <= LFS) {
-                ackedPackets.add(ack);
-                // While the next expected ack is less then or equal to the last frame sent and acked packets contains the ack after the last ack received.
-                //short nextAck = (short) (LAR + 1);
-                while ((LAR + 1) <= LFS && ackedPackets.contains((short)(LAR + 1))){
-                    LAR++;
-                }
-            }
-            for (short i = LAR; i <= LFS; i++) {
-                if(!ackedPackets.contains(i)){
-                    if(i == -1){
-                        //Edge case that occurs if the first packet is dropped
-                        sendFrame((short) 0, buffer, DROP_PACKETS);
-                    } else {
-                        sendFrame(i, buffer, DROP_PACKETS); //Hopefully retransmit un-acked frames
-                    }
-                }
-            }
-            //--------------------------------------------------
-            //Update ack status
+
+            // Update ack status
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
-
             System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
-        } else {System.out.println("Nothing quite yet"); }
+        }
+
+// Slide the window if possible
+        while (ackedPackets.contains((short)(LAR + 1))) {
+            LAR++;
+        }
+        System.out.println("LAR is now => " + LAR);
+
+// Retransmit unacknowledged frames
+        for (short i = LAR; i <= LFS; i++) {
+            if (!ackedPackets.contains(i)) {
+                if (i == -1) {
+                    // Edge case that occurs if the first packet is dropped
+                    sendFrame((short) 0, buffer, DROP_PACKETS);
+                    Thread.sleep(1);
+                } else {
+                    sendFrame(i, buffer, DROP_PACKETS); // Hopefully retransmit un-acked frames
+                    Thread.sleep(1);
+                }
+            }
+        }
     }
 
     public void sendFrame(short blockNum, ByteBuffer buffer, boolean dropsEnable) throws IOException {
@@ -222,7 +222,7 @@ public class Client{
         if(randomNumber < 99){
             sendFrameNoDrop(blockNum, buffer);
         } else {
-            System.out.println("It worked????");
+            System.out.println("Dropped packet #" + blockNum);
         }
         return;
     }

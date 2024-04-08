@@ -99,7 +99,7 @@ public class Server{
 
                 packets.put(packet.getBlockNum(), packet);
 
-                System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
+                //System.out.println("Received message from " + clientAddress + ": " + new String(packet.getData()));
 
                 buffer.clear();
 
@@ -107,9 +107,10 @@ public class Server{
 
                 ByteBuffer ackBuffer = ByteBuffer.wrap(packet.getBlockNumByteArr());
                 CHANNEL.send(ackBuffer, clientAddress);
+                System.out.println("Ack => " + packet.getBlockNum());
 
                 if (packet.isLastDataPacket()) {
-                    System.out.println("AHHHHH");
+                    //System.out.println("AHHHHH");
                     saveFile();
                     break;
                 }
@@ -170,8 +171,6 @@ public class Server{
         int randomNumber = new Random().nextInt(100);
         if(randomNumber < 99){
             sendFrameNoDrop(blockNum, buffer, clientAddress);
-        } else {
-            System.out.println("It worked????");
         }
         return;
     }
@@ -189,7 +188,7 @@ public class Server{
         buffer.clear();
 
         CHANNEL.send(buffer, clientAddress);
-        System.out.println("Frame #" + blockNum + " Sent...");
+        //System.out.println("Frame #" + blockNum + " Sent...");
     }
 
     private void loadFile(String filePath) {
@@ -247,7 +246,8 @@ public class Server{
             packets.get(ack).ackPacket();
             ackedPackets.add(ack);
 
-            System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
+            //System.out.println("Received ack from: " + ack + ". The status of block number " + ack +  " is " + packets.get(ack).getAckStatus());
+
         } else {System.out.println("Nothing quite yet"); }
     }
     public static byte[] encrypt(byte[] data, long key) {
