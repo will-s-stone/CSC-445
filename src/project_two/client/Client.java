@@ -10,34 +10,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class Client{
-    private String HOST;
-    private int PORT;
+    private int PORT = 27001;
+    private String HOST = "localhost";
+    private TreeMap<Short, Packet> packets = new TreeMap<>();
+    private HashSet<Short> ackedPackets = new HashSet<>();
+    private DatagramChannel CHANNEL;
+    private InetSocketAddress ADDRESS;
     private static final int BUFFER_SIZE = 516;
-    TreeMap<Short, Packet> packets = new TreeMap<>();
-    HashSet<Short> ackedPackets = new HashSet<>();
-    DatagramChannel CHANNEL;
-    InetSocketAddress ADDRESS;
-    //SWS = Send Window Size
-    //LAR = Last Ack Received
-    //LFS = Last Frame Sent
+    private long ENCRYPTION_KEY;
     private short SWS = 0, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = false;
-    private long ENCRYPTION_KEY;
     private String OUTPUT_PATH;
     private long TIMEOUT = 10; // milliseconds
 
 
     public static void main(String[] args) throws InterruptedException, IOException {
-        Client client = new Client("localhost", 12345);
+        Client client = new Client();
         client.run();
         //"C:/Users/stone/main_dir/suny_oswego/spring_24/csc_445/code/CSC-445/src/project_two/additional/practice_file.txt"
     }
-    public Client(String host, int port) throws IOException {
+    public Client() throws IOException {
         CHANNEL = DatagramChannel.open();
         CHANNEL.configureBlocking(false);
-        this.HOST = host;
-        this.PORT = port;
         ADDRESS = new InetSocketAddress(HOST, PORT);
+        System.out.println("Client sending to " + HOST + PORT);
     }
 
     public void run() throws IOException, InterruptedException {

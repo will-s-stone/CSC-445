@@ -12,16 +12,14 @@ import java.util.Random;
 import java.util.TreeMap;
 
 public class Server{
-
-    TreeMap<Short, Packet> packets = new TreeMap<>();
-    private static final int PORT = 12345;
-    private static final int BUFFER_SIZE = 516;
-    //private InetSocketAddress ADDRESS;
+    private static final int PORT = 27001;
+    private TreeMap<Short, Packet> packets = new TreeMap<>();
+    private HashSet<Short> ackedPackets = new HashSet<>();
     private DatagramChannel CHANNEL;
-    HashSet<Short> ackedPackets = new HashSet<>();
+    private static final int BUFFER_SIZE = 516;
+    private long ENCRYPTION_KEY;
     private short SWS = 8, LAR = -1, LFS = 0;
     private boolean DROP_PACKETS = false;
-    private long ENCRYPTION_KEY;
     private String OUTPUT_PATH;
     private long TIMEOUT = 10; //milliseconds
 
@@ -72,8 +70,8 @@ public class Server{
                 }
             }
         }
-
     }
+
     public void handleKey(){
         ByteBuffer keyBuffer = ByteBuffer.allocate(BUFFER_SIZE);
 
@@ -109,8 +107,8 @@ public class Server{
                 CHANNEL.send(ackBuffer, clientAddress);
                 System.out.println("Ack => " + packet.getBlockNum());
 
-                if (packet.isLastDataPacket()) {
-                    //System.out.println("AHHHHH");
+                if (packet.isLastDataPacket() && packet.getBlockNum() == (short)(packets.size()-1)) {
+
                     saveFile();
                     break;
                 }
