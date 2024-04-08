@@ -157,8 +157,8 @@ public class Client{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
                     LFS++;
-                    //Thread.sleep(1);
                 } else {
+                    Thread.sleep(1);
                     receiveAck(buffer);
                 }
             }
@@ -188,7 +188,7 @@ public class Client{
             for (short i = LAR; i <= LFS; i++) {
                 if(!ackedPackets.contains(i)){
                     if(i == -1){
-                        //Edge case that occurs if the firs packet is dropped
+                        //Edge case that occurs if the first packet is dropped
                         sendFrame((short) 0, buffer, DROP_PACKETS);
                     } else {
                         sendFrame(i, buffer, DROP_PACKETS); //Hopefully retransmit un-acked frames
