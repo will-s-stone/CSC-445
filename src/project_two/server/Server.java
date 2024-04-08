@@ -153,8 +153,8 @@ public class Server{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS, clientAddress);
                     LFS++;
+                    Thread.sleep(0, 10);
                 } else {
-                    Thread.sleep(1);
                     receiveAck(buffer, clientAddress);
                 }
             }

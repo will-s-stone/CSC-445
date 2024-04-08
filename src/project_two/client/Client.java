@@ -25,6 +25,7 @@ public class Client{
     private long ENCRYPTION_KEY;
     private String OUTPUT_PATH;
 
+
     public static void main(String[] args) throws InterruptedException, IOException {
         Client client = new Client("localhost", 12345);
         client.run();
@@ -49,10 +50,10 @@ public class Client{
         ENCRYPTION_KEY = scanner.nextLong();
         sendEncryptionKey();
 
-        if (request.equals("WRQ")){
+        if (request.equalsIgnoreCase("WRQ")){
             System.out.println("What file would you like to send?");
             String filename = scanner.next();
-            if(filename.equals("y")){
+            if(filename.equalsIgnoreCase("y")){
                 filename = "src/project_two/additional/practice_file.txt";
             }
             System.out.println("What would you like the send window size to be?");
@@ -66,14 +67,15 @@ public class Client{
             if (drop.equalsIgnoreCase("yes")) DROP_PACKETS = true;
             System.out.println("Sent write request...");
             Thread.sleep(1000);
+
             sendDataAndReceiveAck(filename);
 
-        } else if (request.equals("RRQ")){
+        } else if (request.equalsIgnoreCase("RRQ")){
             //We only want to send acks when data comes in...
             //So we transmit the file we want and then receive data packets.
             System.out.println("What file do you want from the server?");
             String filename = scanner.next();
-            if (filename.equals("y")){
+            if (filename.equalsIgnoreCase("y")){
                 filename = "src/project_two/additional/practice_file.txt";
             }
             byte[] filenameBytes = filename.getBytes(StandardCharsets.UTF_8);
@@ -148,6 +150,7 @@ public class Client{
     public void sendDataAndReceiveAck(String filePath) throws IOException, InterruptedException {
         //load the file and write the data map
         loadFile(filePath);
+        long timer = System.nanoTime();
         while(true){
             ByteBuffer buffer = ByteBuffer.allocate(516);
             while (packets.size() != ackedPackets.size()){
@@ -157,11 +160,16 @@ public class Client{
                     //If within window send frame
                     sendFrame(LFS, buffer, DROP_PACKETS);
                     LFS++;
+                    Thread.sleep(0, 10);
                 } else {
-                    Thread.sleep(1);
                     receiveAck(buffer);
                 }
             }
+            timer = System.nanoTime()-timer;
+            long bits = getTotalBytesInPackets() * 8L;
+
+            long throughput = bits / (timer / 1000000000);
+            System.out.println("Throughput: " + throughput + " bits per second \nWindow size of: "  + SWS + "\nDropped packets: " + DROP_PACKETS);
             break;
         }
     }
